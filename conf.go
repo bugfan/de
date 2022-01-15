@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	DesKey       = "abcd1234" // must be 8 bytes
-	DesExp int64 = 60         // default 60s 内可以解开
+	DesKey       = "abcd1234" // des必须使用8个字节（3des需使用24字节）
+	DesExp int64 = 60         // 默认60秒之内可以解开
 )
 
 func init() {

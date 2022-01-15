@@ -28,17 +28,20 @@ func DecodeWithBase64(data []byte) ([]byte, error) {
 	if len(data) < 1 {
 		return []byte{}, errors.New("empty data")
 	}
-	decoded, _ := base64.StdEncoding.DecodeString(string(data))
+	decoded, err := base64.StdEncoding.DecodeString(string(data))
+	if err != nil {
+		return []byte{}, errors.New(fmt.Sprintf("decode error:%v", err))
+	}
 	key := []byte(DesKey)
 	sourceData, err := DesDecrypt(decoded, key)
 	if err != nil || len(sourceData) < 1 {
-		return []byte{}, errors.New("解密失败")
+		return []byte{}, errors.New("decrypt fail")
 	}
 	arr := strings.Split(string(sourceData), ":")
 	if len(arr) > 1 && time.Now().Unix()-to.Int64(arr[1]) < DesExp {
 		return sourceData, nil
 	}
-	return []byte{}, errors.New("解密失败,超时")
+	return []byte{}, errors.New("decrypt fail:time out")
 }
 
 func EncodeWithBase64() ([]byte, error) {
