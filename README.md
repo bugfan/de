@@ -22,7 +22,8 @@ func init(){
 
 // A 
 func main(){
-    token, _ := de.EncodeWithBase64()
+    token, _ := de.EncodeWithBase64()	// this 'de.EncodeWithBase64()' api will use expire time  which you excute 'de.SetExp(30)' before
+    // token, _ := de.Encode([]byte(`some private data`))
     ...
     ...
     req, _ := http.NewRequest("POST", https://xxx.com/aaa, yourbody)
