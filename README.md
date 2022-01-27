@@ -39,6 +39,7 @@ func main(){
     auth := func(w http.ResponseWriter, r *http.Request) {
 	    token := r.Header.Get("MyToken")
 	     _, err := de.DecodeWithBase64([]byte(token))
+	     // _, err := de.Decode([]byte(token))
 	    if err != nil {
             log.Error("can not handle this request...")
             w.WriteHeader(403)
