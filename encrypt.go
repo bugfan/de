@@ -13,17 +13,82 @@ import (
 	"github.com/bugfan/to"
 )
 
+var Default = &cryptor{
+	desKey: "abcd1234", // 默认 ‘abcd1234’, des必须使用8个字节（3des需使用24字节）
+	desExp: 60,         // 默认60秒之内可以解开
+}
+
+type Cryptor interface {
+	Decode([]byte) ([]byte, error)
+	Encode([]byte) ([]byte, error)
+	DecodeEx([]byte) ([]byte, error)
+	EncodeEx([]byte) ([]byte, error)
+}
+
+func New(key string, args ...interface{}) Cryptor {
+	var exp int64 = 60
+	if len(args) > 0 && to.Int64(args[0]) > 0 {
+		exp = to.Int64(args[0])
+	}
+	return &cryptor{
+		desKey: key,
+		desExp: exp,
+	}
+}
+
+type cryptor struct {
+	desKey string
+	desExp int64
+}
+
+func (c cryptor) Decode(data []byte) ([]byte, error) {
+	key := []byte(c.desKey)
+	data, err := DesDecrypt(data, key)
+	return data, err
+}
+
+func (c cryptor) Encode(data []byte) ([]byte, error) {
+	cryptData, err := DesEncrypt(data, []byte(c.desKey))
+	return cryptData, err
+}
+func (c cryptor) DecodeEx(data []byte) ([]byte, error) {
+	if len(data) < 1 {
+		return []byte{}, errors.New("empty data")
+	}
+	decoded, err := base64.StdEncoding.DecodeString(string(data))
+	if err != nil {
+		return []byte{}, errors.New(fmt.Sprintf("decode error:%v", err))
+	}
+	key := []byte(c.desKey)
+	sourceData, err := DesDecrypt(decoded, key)
+	if err != nil || len(sourceData) < 1 {
+		return []byte{}, errors.New("decrypt fail")
+	}
+	str := string(sourceData)
+	idx := strings.LastIndex(str, ":")
+	if time.Now().Unix()-to.Int64(str[idx+1:]) < c.desExp {
+		return sourceData[0:idx], nil
+	}
+	return []byte{}, errors.New("decrypt fail:time out")
+}
+func (c cryptor) EncodeEx(bs []byte) ([]byte, error) {
+	data := []byte(fmt.Sprintf("%s:%s", to.String(bs), to.String(time.Now().Unix())))
+	cryptData, err := DesEncrypt(data, []byte(c.desKey))
+	encoded := base64.StdEncoding.EncodeToString(cryptData)
+	return []byte(encoded), err
+}
+
+// default usage
 func Decode(data []byte) ([]byte, error) {
-	key := []byte(DesKey)
+	key := []byte(Default.desKey)
 	data, err := DesDecrypt(data, key)
 	return data, err
 }
 
 func Encode(data []byte) ([]byte, error) {
-	cryptData, err := DesEncrypt(data, []byte(DesKey))
+	cryptData, err := DesEncrypt(data, []byte(Default.desKey))
 	return cryptData, err
 }
-
 func DecodeWithBase64(data []byte) ([]byte, error) {
 	if len(data) < 1 {
 		return []byte{}, errors.New("empty data")
@@ -32,13 +97,13 @@ func DecodeWithBase64(data []byte) ([]byte, error) {
 	if err != nil {
 		return []byte{}, errors.New(fmt.Sprintf("decode error:%v", err))
 	}
-	key := []byte(DesKey)
+	key := []byte(Default.desKey)
 	sourceData, err := DesDecrypt(decoded, key)
 	if err != nil || len(sourceData) < 1 {
 		return []byte{}, errors.New("decrypt fail")
 	}
 	arr := strings.Split(string(sourceData), ":")
-	if len(arr) > 1 && time.Now().Unix()-to.Int64(arr[1]) < DesExp {
+	if len(arr) > 1 && time.Now().Unix()-to.Int64(arr[1]) < Default.desExp {
 		return sourceData, nil
 	}
 	return []byte{}, errors.New("decrypt fail:time out")
@@ -46,7 +111,7 @@ func DecodeWithBase64(data []byte) ([]byte, error) {
 
 func EncodeWithBase64() ([]byte, error) {
 	data := []byte(fmt.Sprintf("starsource is best:%s", to.String(time.Now().Unix())))
-	cryptData, err := DesEncrypt(data, []byte(DesKey))
+	cryptData, err := DesEncrypt(data, []byte(Default.desKey))
 	encoded := base64.StdEncoding.EncodeToString(cryptData)
 	return []byte(encoded), err
 }
@@ -106,6 +171,8 @@ func DesDecrypt(cipherText, key []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	cipherText = MakeBlocksFull(cipherText, 8)
+
 	// 2. 创建一个使用cbc模式解密的接口
 	blockMode := cipher.NewCBCDecrypter(block, iv)
 	// 3. 解密
@@ -113,4 +180,22 @@ func DesDecrypt(cipherText, key []byte) ([]byte, error) {
 	// 4. cipherText现在存储的是明文, 需要删除加密时候填充的尾部数据
 	plainText, err := unPaddingLastGrooup(cipherText)
 	return plainText, err
+}
+
+func MakeBlocksFull(src []byte, blockSize int) []byte {
+	//1. 获取src的长度， blockSize对于des是8
+	length := len(src)
+	//2. 对blockSize进行取余数， 4
+	remains := length % blockSize
+	//3. 获取要填的数量 = blockSize - 余数
+	paddingNumber := blockSize - remains //4
+	//4. 将填充的数字转换成字符， 4， '4'， 创建了只有一个字符的切片
+	//s1 = []byte{'4'}
+	s1 := []byte{byte(paddingNumber)}
+	//5. 创造一个有4个'4'的切片
+	//s2 = []byte{'4', '4', '4', '4'}
+	s2 := bytes.Repeat(s1, paddingNumber)
+	//6. 将填充的切片追加到src后面
+	s3 := append(src, s2...)
+	return s3
 }
