@@ -70,12 +70,16 @@ func paddingLastGroup(plainText []byte, bloclSize int) []byte {
 }
 
 // 去掉填充的数据
-func unPaddingLastGrooup(plainText []byte) []byte {
+func unPaddingLastGrooup(plainText []byte) ([]byte, error) {
 	// 1. 拿去切片中的最后一个字节
 	length := len(plainText)
 	lastChar := plainText[length-1] //
 	number := int(lastChar)         // 尾部填充的字节个数
-	return plainText[:length-number]
+	cap := length - number
+	if cap < 0 {
+		return nil, errors.New("error plain text")
+	}
+	return plainText[:cap], nil
 }
 
 // des加密
@@ -107,6 +111,6 @@ func DesDecrypt(cipherText, key []byte) ([]byte, error) {
 	// 3. 解密
 	blockMode.CryptBlocks(cipherText, cipherText)
 	// 4. cipherText现在存储的是明文, 需要删除加密时候填充的尾部数据
-	plainText := unPaddingLastGrooup(cipherText)
-	return plainText, nil
+	plainText, err := unPaddingLastGrooup(cipherText)
+	return plainText, err
 }
