@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/des"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -21,6 +22,8 @@ var Default = &cryptor{
 type Cryptor interface {
 	Decode([]byte) ([]byte, error)
 	Encode([]byte) ([]byte, error)
+	DecodeHex([]byte) ([]byte, error)
+	EncodeHex([]byte) ([]byte, error)
 	DecodeEx([]byte) ([]byte, error)
 	EncodeEx([]byte) ([]byte, error)
 }
@@ -41,12 +44,26 @@ type cryptor struct {
 	desExp int64
 }
 
+func (c cryptor) DecodeHex(data []byte) ([]byte, error) {
+	src, err := hex.DecodeString(string(data))
+	if err != nil {
+		return nil, err
+	}
+	return c.Decode([]byte(src))
+}
 func (c cryptor) Decode(data []byte) ([]byte, error) {
 	key := []byte(c.desKey)
 	data, err := DesDecrypt(data, key)
 	return data, err
 }
-
+func (c cryptor) EncodeHex(data []byte) ([]byte, error) {
+	cryptData, err := DesEncrypt(data, []byte(c.desKey))
+	if err != nil {
+		return cryptData, err
+	}
+	dst := hex.EncodeToString(cryptData)
+	return []byte(dst), nil
+}
 func (c cryptor) Encode(data []byte) ([]byte, error) {
 	cryptData, err := DesEncrypt(data, []byte(c.desKey))
 	return cryptData, err
