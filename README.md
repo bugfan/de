@@ -9,18 +9,17 @@
 
 ### 使用
 ```
+/*
+    A发送数据到B，B通过de解密成功才处理
+*/
+
+// 方式一 (使用默认加密函数)
 go get github.com/bugfan/de
 
 func init(){
     de.SetKey("ttttqwer")   //设置八位密钥
     de.SetExp(30)           //设置加密后token有效时间 单位(秒)
 }
-
-/*
-    A发送数据到B，B通过de解密成功才处理
-*/
-
-// 方式一 (使用默认加密函数)
 // A 
 func main(){
     token, _ := de.EncodeWithBase64()	// this 'de.EncodeWithBase64()' api will use expire time  which you excute 'de.SetExp(30)' before
@@ -54,10 +53,15 @@ func main(){
 }
 
 // 方式二 (新建加密对象进行加解密)
+
+go get github.com/bugfan/de
+
+// new cryptor
+var cryptor = de.New("qwer1234")
+
 // A 
 func main(){
-    // new cryptor
-    cryptor := de.New("qwer1234")
+    
     token, _ := cryptor.Encode([]byte(`some private data`))
     // token, _ := cryptor.EncodeHex([]byte(`some private data`))   // token is hex string
     ...
@@ -72,9 +76,6 @@ func main(){
 
 // B
 func main(){
-    // new same cryptor
-    cryptor := de.New("qwer1234")
-
     auth := func(w http.ResponseWriter, r *http.Request) {
 	    token := r.Header.Get("MyToken")
 	     _, err := cryptor.Decode([]byte(token))
