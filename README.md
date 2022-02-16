@@ -20,6 +20,7 @@ func init(){
     A发送数据到B，B通过de解密成功才处理
 */
 
+// 方式一 (使用默认加密函数)
 // A 
 func main(){
     token, _ := de.EncodeWithBase64()	// this 'de.EncodeWithBase64()' api will use expire time  which you excute 'de.SetExp(30)' before
@@ -52,4 +53,41 @@ func main(){
     http.ListenAndServe(....)
 }
 
+// 方式二 (新建加密对象进行加解密)
+// A 
+func main(){
+    // new cryptor
+    cryptor := de.New("qwer1234")
+    token, _ := cryptor.Encode([]byte(`some private data`))
+    // token, _ := cryptor.EncodeHex([]byte(`some private data`))   // token is hex string
+    ...
+    ...
+    req, _ := http.NewRequest("POST", https://xxx.com/aaa, yourbody)
+	req.Header.Add("MyToken", string(token))
+	resp,err:=http.DefaultClient.Do(req)
+	...
+    ...
+}
+
+
+// B
+func main(){
+    // new same cryptor
+    cryptor := de.New("qwer1234")
+
+    auth := func(w http.ResponseWriter, r *http.Request) {
+	    token := r.Header.Get("MyToken")
+	     _, err := cryptor.Decode([]byte(token))
+	     // _, err := cryptor.DecodeHex([]byte(token))  // if token is hex string,use 'DecodeHex' func
+	    if err != nil {
+            log.Error("can not handle this request...")
+            w.WriteHeader(403)
+            return
+        }
+    }
+
+    ....
+    ....
+    http.ListenAndServe(....)
+}
 ```
