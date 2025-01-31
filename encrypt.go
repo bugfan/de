@@ -44,6 +44,14 @@ type cryptor struct {
 	desExp int64
 }
 
+func (c cryptor) DesKey() string {
+	return c.desKey
+}
+
+func (c cryptor) DesExp() int64 {
+	return c.desExp
+}
+
 func (c cryptor) DecodeHex(data []byte) ([]byte, error) {
 	src, err := hex.DecodeString(string(data))
 	if err != nil {
@@ -107,6 +115,7 @@ func Encode(data []byte) ([]byte, error) {
 	cryptData, err := DesEncrypt(data, []byte(Default.desKey))
 	return cryptData, err
 }
+
 func DecodeWithBase64(data []byte) ([]byte, error) {
 	if len(data) < 1 {
 		return []byte{}, errors.New("empty data")
@@ -127,11 +136,101 @@ func DecodeWithBase64(data []byte) ([]byte, error) {
 	return []byte{}, errors.New("decrypt fail:time out")
 }
 
+func NativeDecodeWithBase64(data []byte) ([]byte, error) {
+	defer func() {
+		if e := recover(); e != nil {
+			fmt.Printf("native decode:%v\n", e)
+		}
+	}()
+	cipherData, err := base64.StdEncoding.DecodeString(string(data))
+	if err != nil {
+		return nil, err
+	}
+	block, err := des.NewCipher([]byte(Default.desKey))
+	if err != nil {
+		return nil, err
+	}
+	mode := cipher.NewCBCDecrypter(block, iv)
+	mode.CryptBlocks(cipherData, cipherData)
+	padLen := int(cipherData[len(cipherData)-1])
+	return cipherData[:len(cipherData)-padLen], nil
+}
+
+func NativeDecodeWithHex(data []byte) ([]byte, error) {
+	defer func() {
+		if e := recover(); e != nil {
+			fmt.Printf("native decode:%v\n", e)
+		}
+	}()
+	cipherData, err := hex.DecodeString(string(data))
+	if err != nil {
+		return nil, err
+	}
+	block, err := des.NewCipher([]byte(Default.desKey))
+	if err != nil {
+		return nil, err
+	}
+	mode := cipher.NewCBCDecrypter(block, iv)
+	mode.CryptBlocks(cipherData, cipherData)
+	padLen := int(cipherData[len(cipherData)-1])
+	return cipherData[:len(cipherData)-padLen], nil
+}
+
 func EncodeWithBase64() ([]byte, error) {
 	data := []byte(fmt.Sprintf("starsource is best:%s", to.String(time.Now().Unix())))
 	cryptData, err := DesEncrypt(data, []byte(Default.desKey))
 	encoded := base64.StdEncoding.EncodeToString(cryptData)
 	return []byte(encoded), err
+}
+
+func NativeEncodeWithBase64(plainData []byte) ([]byte, error) {
+	defer func() {
+		if e := recover(); e != nil {
+			fmt.Printf("native encode:%v\n", e)
+		}
+	}()
+	// 使用 PKCS5 填充
+	blockSize := des.BlockSize
+	padLen := blockSize - len(plainData)%blockSize
+	padText := bytes.Repeat([]byte{byte(padLen)}, padLen)
+	plainData = append(plainData, padText...)
+	// 创建 DES 密码块
+	block, err := des.NewCipher([]byte(Default.desKey))
+	if err != nil {
+		return nil, err
+	}
+	// 创建 CBC 加密模式
+	mode := cipher.NewCBCEncrypter(block, iv)
+	encryptedData := make([]byte, len(plainData))
+	mode.CryptBlocks(encryptedData, plainData)
+	// 将加密后的数据进行 Base64 编码
+	encryptedText := base64.StdEncoding.EncodeToString(encryptedData)
+	return []byte(encryptedText), nil
+}
+
+func NativeEncodeWithHex(plainData []byte) ([]byte, error) {
+	defer func() {
+		if e := recover(); e != nil {
+			fmt.Printf("native encode:%v\n", e)
+		}
+	}()
+	// 使用 PKCS5 填充
+	blockSize := des.BlockSize
+	padLen := blockSize - len(plainData)%blockSize
+	padText := bytes.Repeat([]byte{byte(padLen)}, padLen)
+	plainData = append(plainData, padText...)
+	// 创建 DES 密码块
+	block, err := des.NewCipher([]byte(Default.desKey))
+	if err != nil {
+		return nil, err
+	}
+	// 创建 CBC 加密模式
+	mode := cipher.NewCBCEncrypter(block, iv)
+	encryptedData := make([]byte, len(plainData))
+	mode.CryptBlocks(encryptedData, plainData)
+	// 将加密后的数据进行 Hex 编码
+	dst := hex.EncodeToString(encryptedData)
+	return []byte(dst), nil
 }
 
 var iv = []byte("12345678")
