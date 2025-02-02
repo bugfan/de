@@ -8,87 +8,47 @@
 - [x] 自定义加/解密Key
 
 ### 使用
+#### 方式一
 ```
-/*
-    A发送数据到B，B通过de解密成功才处理
-*/
+import (
+	"github.com/bugfan/de"
+)
+...
+var cryptor = de.New("abcd1234") //实例化
+data,err := cryptor.EncodeHex(xxxx)
+...
+plainText,err := cryptor.DecodeHex(data)
 
-// 方式一 (使用默认加密函数)
-go get github.com/bugfan/de
+```
+#### 方式二 
+```
+import (
+	"github.com/bugfan/de"
+)
+...
+de.SetKey("vb123456")
+data,err := de.EncodeWithBase64(xxxx)
+...
+data,err := de.NativeEncodeWithHex(xxxx)
+```
+#### 其他
+```
+其他配置/使用直接查看 encrypt.go 和 conf.go 代码使用
 
-func init(){
-    de.SetKey("ttttqwer")   //设置八位密钥
-    de.SetExp(30)           //设置加密后token有效时间 单位(秒)
+......
+
+type Cryptor interface {
+	Decode([]byte) ([]byte, error)
+	Encode([]byte) ([]byte, error)
+	DecodeHex([]byte) ([]byte, error)
+	EncodeHex([]byte) ([]byte, error)
+	DecodeBase64([]byte) ([]byte, error)
+	EncodeBase64([]byte) ([]byte, error)
+	NativeDecodeHex([]byte) ([]byte, error)
+	NativeEncodeHex([]byte) ([]byte, error)
+	NativeDecodeBase64([]byte) ([]byte, error)
+	NativeEncodeBase64([]byte) ([]byte, error)
 }
-// A 
-func main(){
-    token, _ := de.EncodeWithBase64()	// this 'de.EncodeWithBase64()' api will use expire time  which you excute 'de.SetExp(30)' before
-    // token, _ := de.Encode([]byte(`some private data`))
-    ...
-    ...
-    req, _ := http.NewRequest("POST", https://xxx.com/aaa, yourbody)
-	req.Header.Add("MyToken", string(token))
-	resp,err:=http.DefaultClient.Do(req)
-	...
-    ...
-}
+.....
 
-// B
-func main(){
-
-    auth := func(w http.ResponseWriter, r *http.Request) {
-	    token := r.Header.Get("MyToken")
-	     _, err := de.DecodeWithBase64([]byte(token))
-	     // _, err := de.Decode([]byte(token))
-	    if err != nil {
-            log.Error("can not handle this request...")
-            w.WriteHeader(403)
-            return
-        }
-    }
-
-    ....
-    ....
-    http.ListenAndServe(....)
-}
-
-// 方式二 (新建加密对象进行加解密)
-
-go get github.com/bugfan/de
-
-// new cryptor
-var cryptor = de.New("qwer1234")
-
-// A 
-func main(){
-    
-    token, _ := cryptor.Encode([]byte(`some private data`))
-    // token, _ := cryptor.EncodeHex([]byte(`some private data`))   // token is hex string
-    ...
-    ...
-    req, _ := http.NewRequest("POST", https://xxx.com/aaa, yourbody)
-	req.Header.Add("MyToken", string(token))
-	resp,err:=http.DefaultClient.Do(req)
-	...
-    ...
-}
-
-
-// B
-func main(){
-    auth := func(w http.ResponseWriter, r *http.Request) {
-	    token := r.Header.Get("MyToken")
-	     _, err := cryptor.Decode([]byte(token))
-	     // _, err := cryptor.DecodeHex([]byte(token))  // if token is hex string,use 'DecodeHex' func
-	    if err != nil {
-            log.Error("can not handle this request...")
-            w.WriteHeader(403)
-            return
-        }
-    }
-
-    ....
-    ....
-    http.ListenAndServe(....)
-}
 ```

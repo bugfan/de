@@ -11,8 +11,8 @@ func init() {
 		Default.desKey = key
 	}
 
-	if exp := to.Int64(os.Getenv("DES_EXP")); exp > 0 {
-		Default.desExp = exp
+	if exp := to.Int64(os.Getenv("DES_EXPIRE")); exp > 0 {
+		Default.desExpire = exp
 	}
 }
 
@@ -20,6 +20,6 @@ func SetKey(key string) {
 	Default.desKey = key
 }
 
-func SetExp(e int64) {
-	Default.desExp = e
+func SetExpire(e int64) {
+	Default.desExpire = e
 }
